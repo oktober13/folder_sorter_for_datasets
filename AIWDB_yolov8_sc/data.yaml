@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 11
+names: ['Balloons', 'Box of Products', 'Cotton Candy', 'Cotton Candy Tent', 'Different items', 'Flowers', 'Kvas', 'Kvas bottle', 'Stall', 'Stall Umbr', 'Trunk']
+
+roboflow:
+  workspace: daniel-pcpan
+  project: aiwdb
+  version: 18
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/daniel-pcpan/aiwdb/dataset/18
