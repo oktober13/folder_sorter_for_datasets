@@ -5,6 +5,90 @@ from collections import Counter
 from sklearn.model_selection import train_test_split
 
 
+class LabelsConverter:
+    def __init__(self, outdir='.'):
+        self.outdir = outdir
+
+    def transform_image_labels(self, path_to_labels_txt: str, to: str = 'file'):
+        '''
+        The function reads image labels txt file line by line
+        and converts any bbox to polygon saving modified txt file
+        in the stated output directory
+        '''
+        new_lines = ''
+        with open(path_to_labels_txt, 'r') as source_file:
+            for line in source_file:
+                tokens = line.strip().split(' ')
+                class_id = tokens[0]
+                coords = list(map(float, tokens[1:]))
+                if len(coords) == 4:
+                    pn = self.from_xywhn_to_polygonn(coords)
+                    new_line = str(class_id)
+                    for point in pn:
+                        new_line += (' ' + str(point))
+                else:
+                    new_line = line
+                new_lines += (new_line + '\n')
+
+        if to == 'file':
+            new_labels_path = os.path.basename(path_to_labels_txt)
+            with open(new_labels_path, 'w') as target_file:
+                target_file.write(new_lines)
+        else:
+            print(new_lines)
+
+    @staticmethod
+    def from_xyxy_to_xywhn(img_size: tuple[int], box: list[float]):
+        '''
+        input: (img_w, img_h), (x1, y1, x2, y2) - top left and bottom right
+        output: [xn, yn, wn, hn] - bbox center, width, height, all normalized
+        '''
+        x = (box[0] + box[1]) / 2.0
+        y = (box[2] + box[3]) / 2.0
+        w = box[1] - box[0]
+        h = box[3] - box[2]
+        xn = x / img_size[0]
+        wn = w / img_size[0]
+        yn = y / img_size[1]
+        hn = h / img_size[1]
+        return [xn, yn, wn, hn]
+
+    @staticmethod
+    def from_xywhn_to_polygonn(xywhn: list[float]):
+        '''
+        input: [xn, yn, wn, hn] - bbox center, width, height, all normalized
+        output: [x1n, y1n, x2n, y2n, x3n, y3n, x4n, y4n]
+        '''
+        xn, yn, wn, hn = xywhn
+        # top left
+        x1n = xn - wn / 2.0
+        y1n = yn - hn / 2.0
+        # top right
+        x2n = xn + wn / 2.0
+        y2n = yn - hn / 2.0
+        # bottom right
+        x3n = xn + wn / 2.0
+        y3n = yn + hn / 2.0
+        # bottom left
+        x4n = xn - wn / 2.0
+        y4n = yn + hn / 2.0
+        return [x1n, y1n, x2n, y2n, x3n, y3n, x4n, y4n]
+
+    @staticmethod
+    def from_bbox_polygonn_to_xywh(polygonn: tuple[float]):
+        '''
+        input: (x1n, y1n, x2n, y2n, x3n, y3n, x4n, y4n)
+        output: (xn, yn, wn, hn) - bbox center, width, height, all normalized
+        '''
+        x1n, y1n, x2n, y2n, x3n, y3n, x4n, y4n = polygonn
+        xn = (x1n + x2n) / 2.0
+        wn = (x2n - x1n)
+
+        yn = (y1n + y4n) / 2.0
+        hn = (y4n - y1n)
+        return [xn, yn, wn, hn]
+
+
 class DataPreprocessor:
     '''Разделитель тренировочного датасета с двумя и более классами на пропорциональные выборки train, test и valid'''
     def __init__(self, val_size: float = 0.15, test_size: float = 0.15):
